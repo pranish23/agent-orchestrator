@@ -18,7 +18,7 @@
       </button>
     </div>
     
-    <div class="quick-actions">
+    <div class="quick-actions" style="margin-bottom: 16px;">
       <span class="label">Try:</span>
       <button 
         v-for="example in examples" 
