@@ -23,17 +23,22 @@ cp .env.example .env
 # Edit .env with your OpenAI API key
 ```
 
-### 2. Start Services
-
+### 2. Start Everything
 ```bash
-docker-compose up -d
+docker-compose up --build
 ```
 
-### 3. Access API
+### 3. Access
+- **Testing UI**: [http://localhost:5173](http://localhost:5173) (Interactive query interface & data viewer)
+- **API**: [http://localhost:8000](http://localhost:8000)
+- **Docs**: [http://localhost:8000/docs](http://localhost:8000/docs) (Swagger UI)
 
-- API: http://localhost:8000
-- Docs: http://localhost:8000/docs
-- Health: http://localhost:8000/health
+## 🖥️ Testing UI
+The project includes a modern **Vue 3 + Vite** testing dashboard designed for developers to:
+- **Execute Queries**: Submit natural language intents and see the breakdown of classification.
+- **Trace Execution**: Visualize the execution plan (Parallel vs Sequential) and time taken.
+- **Inspect Database**: Live view of cached data from Gmail, Calendar, and Drive, focused on columns used for vector embeddings.
+- **Auto-Seeding**: Upon first startup, the system automatically seeds the database with mock data for immediate testing.
 
 ## API Endpoints
 

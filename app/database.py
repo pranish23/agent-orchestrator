@@ -37,7 +37,9 @@ async def get_db() -> AsyncSession:
             await session.close()
 
 
-async def init_db():
+async def init_db(drop_all: bool = False):
     """Initialize database tables"""
     async with engine.begin() as conn:
+        if drop_all:
+            await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)

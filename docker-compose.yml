@@ -16,6 +16,11 @@ services:
         condition: service_started
     networks:
       - orchestrator-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   db:
     image: pgvector/pgvector:pg16
@@ -68,6 +73,20 @@ services:
     depends_on:
       - db
       - redis
+    networks:
+      - orchestrator-network
+
+  frontend:
+    build: 
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      api:
+        condition: service_healthy
     networks:
       - orchestrator-network
 

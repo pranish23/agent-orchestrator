@@ -133,6 +133,44 @@ Get synchronization status for all services.
 
 ---
 
+## Data Retrieval (Testing UI)
+
+These endpoints provide sanitized database content for the testing UI, including the columns used for generating embeddings.
+
+### GET /api/v1/data/gmail
+
+Fetch cached Gmail data.
+
+**Response:**
+
+```json
+{
+  "items": [
+    {
+      "id": "uuid",
+      "email_id": "email-001",
+      "subject": "Turkish Airlines Booking Confirmation",
+      "sender": "booking@turkishairlines.com",
+      "body_preview": "Dear Passenger...",
+      "received_at": "2024-11-05T10:30:00Z"
+    }
+  ],
+  "count": 1
+}
+```
+
+### GET /api/v1/data/gcal
+
+Fetch cached Calendar data.
+
+### GET /api/v1/data/gdrive
+
+Fetch cached Drive data.
+
+---
+
+---
+
 ## Error Responses
 
 ### 400 Bad Request

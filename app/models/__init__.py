@@ -4,7 +4,7 @@ SQLAlchemy models for the orchestrator
 from datetime import datetime
 from typing import Optional, List
 from uuid import uuid4
-from sqlalchemy import Column, String, Text, DateTime, Integer, ForeignKey, JSON
+from sqlalchemy import Column, String, Text, DateTime, Integer, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID, JSONB
 from sqlalchemy.orm import relationship
 from pgvector.sqlalchemy import Vector
@@ -70,7 +70,7 @@ class GmailCache(Base):
     user = relationship("User", back_populates="gmail_cache")
     
     __table_args__ = (
-        {'postgresql_partition_by': None},
+        UniqueConstraint('user_id', 'email_id', name='uix_gmail_user_email'),
     )
 
 
@@ -93,6 +93,10 @@ class GCalCache(Base):
     
     # Relationships
     user = relationship("User", back_populates="gcal_cache")
+    
+    __table_args__ = (
+        UniqueConstraint('user_id', 'event_id', name='uix_gcal_user_event'),
+    )
 
 
 class GDriveCache(Base):
@@ -113,6 +117,10 @@ class GDriveCache(Base):
     
     # Relationships
     user = relationship("User", back_populates="gdrive_cache")
+    
+    __table_args__ = (
+        UniqueConstraint('user_id', 'file_id', name='uix_gdrive_user_file'),
+    )
 
 
 class SyncStatus(Base):

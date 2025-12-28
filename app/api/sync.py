@@ -12,6 +12,8 @@ router = APIRouter()
 logger = structlog.get_logger()
 
 
+from app.tasks.sync_tasks import sync_gmail, sync_gcal, sync_gdrive
+
 @router.post("/trigger", response_model=BaseResponse)
 async def trigger_sync(
     request: SyncTriggerRequest = None,
@@ -26,9 +28,12 @@ async def trigger_sync(
     
     logger.info("Sync triggered", services=services)
     
-    # In production, this would trigger Celery tasks
-    for service in services:
-        logger.info(f"Sync started for {service}")
+    if "gmail" in services:
+        sync_gmail.delay()
+    if "gcal" in services:
+        sync_gcal.delay()
+    if "gdrive" in services:
+        sync_gdrive.delay()
     
     return BaseResponse(
         success=True,
