@@ -84,7 +84,7 @@ class Orchestrator:
                 }
             
             # Step 2: Create execution plan
-            plan = self.query_planner.create_plan(query, intent)
+            plan = await self.query_planner.create_plan(query, intent)
             self.logger.info("Plan created", num_steps=len(plan.steps))
             
             # Step 3: Execute plan
@@ -110,6 +110,20 @@ class Orchestrator:
                 "response": response,
                 "intent": intent,
                 "actions_taken": actions_taken,
+                "execution_plan": {
+                    "steps": [
+                        {
+                            "id": s.id,
+                            "service": s.service,
+                            "operation": s.operation,
+                            "description": f"{s.operation.replace('_', ' ').title()} in {s.service}",
+                            "status": s.status.value,
+                            "depends_on": s.depends_on
+                        }
+                        for s in plan.steps
+                    ],
+                    "parallel_groups": plan.parallel_groups
+                }
             }
             
         except Exception as e:

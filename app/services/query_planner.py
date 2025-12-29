@@ -7,6 +7,12 @@ from dataclasses import dataclass, field
 from enum import Enum
 import structlog
 
+import json
+import structlog
+from app.config import settings
+from app.services.tool_registry import ToolRegistry
+from app.services.llm_provider import get_llm_provider
+
 logger = structlog.get_logger()
 
 
@@ -80,8 +86,13 @@ class QueryPlanner:
     
     def __init__(self):
         self.logger = logger.bind(component="query_planner")
+        self.registry = ToolRegistry()
+        self.llm = get_llm_provider(settings) if settings else None
+        
+        # System prompt for the Architect LLM
+        self.system_prompt = self._build_system_prompt()
     
-    def create_plan(
+    async def create_plan(
         self,
         query: str,
         intent: Dict[str, Any]
@@ -107,16 +118,38 @@ class QueryPlanner:
             entities=entities,
         )
         
-        # Get plan template based on intent
-        # If multiple services are requested and it's a simple search intent, use general search
+        # Try LLM-based planning first if available and if intent is generic or complex
+        # We fall back to templates only if LLM fails or isn't configured
+        try:
+            if self.llm:
+                steps = await self._generate_plan_via_llm(query, intent)
+                if steps:
+                    self.logger.info("Generated plan via LLM", num_steps=len(steps))
+                else:
+                    self.logger.warning("LLM returned empty plan, falling back to templates")
+                    steps = self._use_template_planner(query, intent_type, intent)
+            else:
+                steps = self._use_template_planner(query, intent_type, intent)
+        except Exception as e:
+            self.logger.error("LLM planning failed", error=str(e))
+            steps = self._use_template_planner(query, intent_type, intent)
+            
+        return self._finalize_plan(query, intent_type, steps)
+
+    def _use_template_planner(self, query: str, intent_type: str, intent: Dict) -> List[ExecutionStep]:
+        """Fallback to template-based planning"""
+        services = intent.get("services", [])
         is_simple_search = intent_type in ["search_emails", "search_events", "search_files", "general_search"]
+        
         if len(services) > 1 and is_simple_search:
             plan_generator = self._plan_general_search
         else:
             plan_generator = self._get_plan_generator(intent_type)
             
-        steps = plan_generator(query, intent)
-        
+        return plan_generator(query, intent)
+
+    def _finalize_plan(self, query: str, intent_type: str, steps: List[ExecutionStep]) -> ExecutionPlan:
+        """Finalize the plan structure"""
         # Build dependency groups for parallel execution
         parallel_groups = self._build_parallel_groups(steps)
         
@@ -134,6 +167,99 @@ class QueryPlanner:
         )
         
         return plan
+
+    async def _generate_plan_via_llm(self, query: str, intent: Dict) -> List[ExecutionStep]:
+        """Generate execution steps using the Architect LLM"""
+        prompt = f"Query: {query}\nIntent: {json.dumps(intent, indent=2)}"
+        
+        response = await self.llm.chat_completion(
+            prompt=prompt,
+            system_prompt=self.system_prompt,
+            response_format="json",
+            temperature=0.0  # Deterministic planning
+        )
+        
+        # Clean response of markdown formatting if present
+        cleaned_response = response.strip()
+        if cleaned_response.startswith("```json"):
+            cleaned_response = cleaned_response[7:]
+        if cleaned_response.startswith("```"):
+            cleaned_response = cleaned_response[3:]
+        if cleaned_response.endswith("```"):
+            cleaned_response = cleaned_response[:-3]
+        cleaned_response = cleaned_response.strip()
+        
+        try:
+            plan_data = json.loads(cleaned_response)
+            steps_data = plan_data.get("steps", [])
+            
+            steps = []
+            for s in steps_data:
+                tool_name = s.get("tool", "")
+                if "_" in tool_name:
+                    service, operation = tool_name.split("_", 1)
+                    if service not in ["gmail", "gcal", "gdrive"]:
+                         # Fallback/Error handling if service unknown, or trust LLM
+                         pass
+                else:
+                    continue
+
+                steps.append(ExecutionStep(
+                    id=s.get("id"),
+                    service=service,
+                    operation=tool_name, 
+                    params=s.get("parameters", {}),
+                    depends_on=s.get("depends_on", [])
+                ))
+            
+            # Post-processing to fix operation names for existing agents
+            # Agents expect "search" not "gmail_search", so we map them if needed
+            # Specifically, GCalAgent.search expects params, create_event etc.
+            # We need to align the tool names with what agents expect
+            
+            for step in steps:
+                # Map full tool name to agent operation
+                if step.service == "gmail":
+                     if step.operation == "gmail_search": step.operation = "search"
+                     elif step.operation == "gmail_send_email": step.operation = "send_email"
+                     elif step.operation == "gmail_create_draft": step.operation = "draft_email"
+                elif step.service == "gcal":
+                     if step.operation == "gcal_search_events": step.operation = "search"
+                     elif step.operation == "gcal_create_event": step.operation = "create_event"
+                elif step.service == "gdrive":
+                     if step.operation == "gdrive_search_files": step.operation = "search"
+                     elif step.operation == "gdrive_create_file": step.operation = "create_file"
+                     elif step.operation == "gdrive_share_file": step.operation = "share_file"
+                    
+            return steps
+            
+        except json.JSONDecodeError:
+            self.logger.error("Failed to parse LLM plan JSON")
+            return None
+
+    def _build_system_prompt(self) -> str:
+        """Construct the system prompt with tool definitions"""
+        tools_schema = json.dumps(self.registry.get_all_schemas(), indent=2)
+        
+        return f"""You are the Architect Agent. Your goal is to create an efficient execution plan for a user query.
+You have access to the following tools:
+
+{tools_schema}
+
+INSTRUCTIONS:
+1. Analyze the user's query and the classified intent.
+2. Break down the request into a series of logical steps.
+3. Use the provided tools to accomplish each step.
+4. DETERMINE DEPENDENCIES correctly. If Step B needs information from Step A, Step B must depend on Step A.
+5. OPTIMIZE FOR PARALLELISM. Steps that do not depend on each other should have empty dependencies or depend on the same parent.
+
+OUTPUT FORMAT:
+Return a JSON object with a "steps" array. Each step must have:
+- "id": unique string identifier (e.g., "search_email")
+- "tool": the exact name of the tool to use (e.g., "gmail_search")
+- "parameters": arguments for the tool
+- "depends_on": array of step IDs that must complete before this step starts
+""" 
     
     def _get_plan_generator(self, intent_type: str):
         """Get the appropriate plan generator for an intent"""
@@ -278,7 +404,7 @@ class QueryPlanner:
         entities = intent.get("entities", {})
         company = entities.get("company", "")
         
-        return [
+        steps = [
             # Step 1: Find the meeting (required first)
             ExecutionStep(
                 id="find_meeting",
@@ -304,6 +430,24 @@ class QueryPlanner:
                 depends_on=[],
             ),
         ]
+
+        # Check for document creation request
+        if doc_name := (entities.get("document_name") or entities.get("file_name")):
+            steps.append(
+                ExecutionStep(
+                    id="create_meeting_doc",
+                    service="gdrive",
+                    operation="create_file",
+                    params={
+                        "name": doc_name,
+                        "mime_type": "application/vnd.google-apps.document",
+                        "content": f"Meeting Notes - {company}\nDate: {datetime.now().strftime('%Y-%m-%d')}\n\nAgenda:\n1. ",
+                    },
+                    depends_on=[],
+                )
+            )
+            
+        return steps
     
     def _plan_search_emails(self, query: str, intent: Dict) -> List[ExecutionStep]:
         """Plan for searching emails"""

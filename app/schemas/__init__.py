@@ -45,6 +45,7 @@ class QueryResponse(BaseModel):
     conversation_id: UUID
     response: str = Field(..., description="Natural language response")
     intent: Optional[IntentResult] = None
+    execution_plan: Optional[Dict[str, Any]] = Field(None, description="Detailed execution plan DAG")
     actions_taken: List[ActionTaken] = Field(default_factory=list)
     execution_time_ms: int = Field(0, description="Total execution time in milliseconds")
 

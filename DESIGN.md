@@ -36,6 +36,34 @@ This document outlines the architecture and strategies for scaling the Agentic G
                                   └──────────────────────────────────────────────┘
 ```
 
+## Core Orchestration Logic: "Architect" DAG Planner
+
+The system implements a state-of-the-art **Zero-shot DAG Generation** approach (the "Architect" pattern) for high-performance orchestration.
+
+### 1. Model Context Protocol (MCP) Tool Registry
+Instead of hardcoding agent capabilities, the system uses a central `ToolRegistry` that defines agent tools using standardized JSON schemas. This allows for:
+- **Dynamic Tool Discovery**: The LLM planner is automatically aware of all available tools and their parameters.
+- **Strict Validation**: All plan steps are validated against the schema before execution.
+- **Extensibility**: Adding a new agent or operation only requires adding a schema to the registry.
+
+### 2. Architect Mode (Parallel DAG Generation)
+The `QueryPlanner` operates as an **Architect Agent**. In a single LLM call, it:
+1. Analyzes the intent and available tools.
+2. Generates a full execution graph with **Explicit Dependencies** (`depends_on`).
+3. Groups steps into **Parallel Execution Blocks** to minimize end-to-end latency.
+
+Example DAG Structure:
+```json
+{
+  "steps": [
+    { "id": "search_gmail", "tool": "gmail_search", "depends_on": [] },
+    { "id": "search_gcal", "tool": "gcal_search_events", "depends_on": [] },
+    { "id": "draft_email", "tool": "gmail_create_draft", "depends_on": ["search_gmail", "search_gcal"] }
+  ]
+}
+```
+*In this example, Gmail and GCal searches run in parallel, while the draft waits for both.*
+
 ## Scaling Strategies
 
 ### 1. Horizontal Scaling
@@ -95,6 +123,66 @@ CREATE INDEX ON gmail_cache
 
 -- For 1M users with ~100 emails each = 100M rows
 -- Optimal lists = 10,000
+```
+
+## Database Architecture & ER Diagram
+
+The database is built on PostgreSQL with the `pgvector` extension for semantic search capabilities.
+
+### Entity Relationships
+
+```mermaid
+erDiagram
+    USERS ||--o{ CONVERSATIONS : starts
+    USERS ||--o{ GMAIL_CACHE : owns
+    USERS ||--o{ GCAL_CACHE : owns
+    USERS ||--o{ GDRIVE_CACHE : owns
+    
+    USERS {
+        uuid id PK
+        string email
+        string google_access_token
+        string google_refresh_token
+    }
+    
+    CONVERSATIONS {
+        uuid id PK
+        uuid user_id FK
+        text query
+        jsonb intent
+        text response
+        timestamp created_at
+    }
+    
+    GMAIL_CACHE {
+        uuid id PK
+        uuid user_id FK
+        string email_id
+        string subject
+        text body_preview
+        vector embedding
+        timestamp received_at
+    }
+    
+    GCAL_CACHE {
+        uuid id PK
+        uuid user_id FK
+        string event_id
+        string title
+        text description
+        vector embedding
+        timestamp start_time
+    }
+    
+    GDRIVE_CACHE {
+        uuid id PK
+        uuid user_id FK
+        string file_id
+        string name
+        string mime_type
+        vector embedding
+        timestamp modified_at
+    }
 ```
 
 ### 4. Rate Limiting

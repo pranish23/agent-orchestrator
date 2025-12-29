@@ -5,13 +5,17 @@ An intelligent orchestrator that executes natural language queries across Gmail,
 ## Features
 
 - 🧠 **Intent Classification** - LLM-powered natural language understanding
-- 🔄 **Query Orchestration** - Parallel execution with dependency resolution
+- 🏗️ **Architect DAG Planner** - Zero-shot parallel execution plan generation
+- 🛠️ **MCP Tool Registry** - Standardized, dynamic discovery of agent capabilities
+- 🔄 **Query Orchestration** - Parallel execution with strict dependency resolution
 - 🔍 **Hybrid Search** - Vector similarity + keyword filtering with pgvector
 - 📧 **Gmail Agent** - Search, draft, send emails
 - 📅 **Calendar Agent** - Search, create, update events
 - 📁 **Drive Agent** - Search, share, organize files
+- 📊 **Execution Trace UI** - Visual breakdown of parallel vs sequential operations
 - ⚡ **Caching** - Redis caching for embeddings and intents
 - 🚦 **Rate Limiting** - Sliding window rate limiter
+- 🐳 **Dockerized** - Instant setup with mock data auto-seeding
 
 ## Quick Start
 

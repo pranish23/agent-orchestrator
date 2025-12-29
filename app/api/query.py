@@ -61,6 +61,7 @@ async def process_query(
             conversation_id=conversation_id,
             response=result["response"],
             intent=IntentResult(**result["intent"]) if result.get("intent") else None,
+            execution_plan=result.get("execution_plan"),
             actions_taken=result.get("actions_taken", []),
             execution_time_ms=execution_time_ms,
         )

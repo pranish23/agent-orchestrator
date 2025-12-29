@@ -121,8 +121,8 @@ defineProps({
 }
 
 .service-badge.gmail {
-  background: rgba(234, 67, 53, 0.2);
-  color: #ea4335;
+  background: rgba(66, 133, 244, 0.2);
+  color: #4285f4;
 }
 
 .service-badge.gcal {
@@ -130,9 +130,9 @@ defineProps({
   color: #4285f4;
 }
 
-.service-badge.drive {
-  background: rgba(52, 168, 83, 0.2);
-  color: #34a853;
+.service-badge.gdrive {
+  background: rgba(66, 133, 244, 0.2);
+  color: #4285f4;
 }
 
 .operation {

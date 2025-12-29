@@ -49,6 +49,19 @@ Process a natural language query across Google Workspace services.
     "confidence": 0.95
   },
   "actions_taken": [],
+  "execution_plan": {
+    "steps": [
+      {
+        "id": "search_events",
+        "service": "gcal",
+        "operation": "search_events",
+        "description": "Search Events in gcal",
+        "status": "completed",
+        "depends_on": []
+      }
+    ],
+    "parallel_groups": [["search_events"]]
+  },
   "execution_time_ms": 342
 }
 ```

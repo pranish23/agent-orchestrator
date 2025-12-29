@@ -39,7 +39,7 @@
       </div>
       
       <div class="data-section">
-        <h2>Database Content</h2>
+        <h2>Embedded Content</h2>
         <p class="section-subtitle">Data used for embedding and semantic search</p>
         
         <TabPanel :tabs="dataTabs" default-tab="gmail">

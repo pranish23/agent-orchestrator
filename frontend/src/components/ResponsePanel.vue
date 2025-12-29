@@ -6,14 +6,18 @@
     </div>
     
     <div class="response-content">
-      <p class="response-text">{{ response.response }}</p>
+      <div class="response-text markdown-body" v-html="renderedResponse"></div>
     </div>
     
     <!-- Intent Card -->
     <IntentCard v-if="response.intent" :intent="response.intent" />
     
     <!-- Execution Trace -->
-    <ExecutionTrace v-if="response.intent?.steps" :steps="response.intent.steps" />
+    <ExecutionTrace 
+      v-if="response.intent?.steps || response.execution_plan" 
+      :steps="response.intent?.steps || []" 
+      :plan="response.execution_plan"
+    />
     
     <!-- Actions Taken -->
     <ActionsList :actions="response.actions_taken || []" />
@@ -30,15 +34,22 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { marked } from 'marked'
 import IntentCard from './IntentCard.vue'
 import ExecutionTrace from './ExecutionTrace.vue'
 import ActionsList from './ActionsList.vue'
 
-defineProps({
+const props = defineProps({
   response: {
     type: Object,
     default: null
   }
+})
+
+const renderedResponse = computed(() => {
+  if (!props.response?.response) return ''
+  return marked(props.response.response)
 })
 </script>
 
@@ -104,6 +115,51 @@ defineProps({
   line-height: 1.6;
   font-size: 15px;
   margin: 0;
-  white-space: pre-wrap;
+}
+
+/* Markdown Styles */
+:deep(.markdown-body) {
+  font-size: 15px;
+}
+
+:deep(.markdown-body p) {
+  margin-bottom: 12px;
+}
+
+:deep(.markdown-body ul), :deep(.markdown-body ol) {
+  margin-bottom: 16px;
+  padding-left: 20px;
+}
+
+:deep(.markdown-body li) {
+  margin-bottom: 4px;
+}
+
+:deep(.markdown-body strong) {
+  color: #fff;
+  font-weight: 600;
+}
+
+:deep(.markdown-body code) {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-family: 'Fira Code', monospace;
+  font-size: 0.9em;
+}
+
+:deep(.markdown-body pre) {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 12px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin-bottom: 16px;
+}
+
+:deep(.markdown-body blockquote) {
+  border-left: 4px solid rgba(255, 255, 255, 0.2);
+  margin: 0 0 16px 0;
+  padding-left: 16px;
+  color: rgba(255, 255, 255, 0.6);
 }
 </style>

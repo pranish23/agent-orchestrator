@@ -210,12 +210,56 @@ class DriveAgent(BaseAgent):
             return await self._create_folder(params)
         elif operation == "move_file":
             return await self._move_file(params)
+        elif operation == "create_file":
+            return await self._create_file(params)
         else:
             return OperationResult(
                 success=False,
                 operation=operation,
                 error=f"Unknown operation: {operation}"
             )
+    
+    async def _create_file(self, params: Dict[str, Any]) -> OperationResult:
+        """Create a new file"""
+        name = params.get("name")
+        if not name:
+            return OperationResult(
+                success=False,
+                operation="create_file",
+                error="Missing file name"
+            )
+            
+        file_id = f"file-{uuid4().hex[:8]}"
+        mime_type = params.get("mime_type", "application/vnd.google-apps.document")
+        
+        # Determine extension if missing
+        if "." not in name:
+            if "spreadsheet" in mime_type or "sheet" in mime_type:
+                name += ".xlsx"
+            else:
+                name += ".docx"
+
+        new_file = {
+            "id": file_id,
+            "name": name,
+            "mime_type": mime_type,
+            "parent_id": params.get("parent_id", "root"),
+            "content_preview": params.get("content", "Empty document"),
+            "shared_with": [],
+            "modified_at": datetime.now(),
+            "size_bytes": len(params.get("content", ""))
+        }
+        self._files.append(new_file)
+        
+        return OperationResult(
+            success=True,
+            operation="create_file",
+            data={
+                "file_id": file_id,
+                "name": name,
+                "message": f"File '{name}' created successfully",
+            }
+        )
     
     async def _share_file(self, params: Dict[str, Any]) -> OperationResult:
         """Share a file with someone"""

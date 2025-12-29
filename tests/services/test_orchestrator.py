@@ -12,7 +12,10 @@ from app.services.response_synthesizer import ResponseSynthesizer
 
 @pytest.fixture
 def mock_db():
-    return MagicMock()
+    mock = MagicMock()
+    mock.execute = AsyncMock(return_value=MagicMock())
+    mock.commit = AsyncMock()
+    return mock
 
 
 @pytest.fixture

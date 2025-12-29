@@ -33,7 +33,8 @@ JSON Response format:
     "entities": {{
         "time_reference": "tomorrow/next week/etc.",
         "email_addresses": ["user@example.com"],
-        "company": "Company Name"
+        "company": "Company Name",
+        "airline": "Airline Name (for flight intents)"
     }},
     "steps": ["step1", "step2"],
     "confidence": 0.95,
@@ -42,19 +43,20 @@ JSON Response format:
 }}
 
 Common intents:
-- search_emails: Find specific emails
-- search_events: Find calendar events
-- search_files: Find Drive files
-- cancel_flight: Cancel a flight booking
-- prepare_meeting: Gather info for a meeting
-- schedule_event: Create calendar event
-- draft_email: Draft an email
-- send_email: Send an email
-- share_file: Share a Drive file
+- search_emails: Find specific emails (Service: gmail)
+- search_events: Find calendar events (Service: gcal)
+- search_files: Find Drive files (Service: gdrive)
+- cancel_flight: Cancel a flight booking. REQUIRES checking BOTH Gmail (for booking) and GCal (for the event). (Services: gmail, gcal)
+- prepare_meeting: Gather info for a meeting. REQUIRES checking Gmail, GCal, and GDrive. (Services: gmail, gcal, gdrive)
+- schedule_event: Create calendar event (Service: gcal)
+- draft_email: Draft an email (Service: gmail)
+- send_email: Send an email (Service: gmail)
+- share_file: Share a Drive file (Service: gdrive)
 
-If the query is ambiguous (e.g., "Move the meeting with John" - which John?), set:
-- "ambiguous": true
-- "clarification_needed": "Which John do you mean? I found meetings with john@company.com and john.miller@company.com"
+GUIDELINES:
+- If the user mentions "flight" and "cancel", ALWAYS include BOTH "gmail" and "gcal" in services, and extract the airline into the "airline" entity.
+- If the user mentions "prepare" and "meeting", ALWAYS include "gmail", "gcal", and "gdrive".
+- Respond with valid JSON only.
 """
 
 
@@ -116,6 +118,17 @@ class IntentClassifier:
         Returns:
             Structured intent with services, intent type, entities, and steps
         """
+        if not query:
+            return {
+                "services": ["gmail", "gcal", "gdrive"],
+                "intent": "general_search",
+                "entities": {},
+                "steps": [],
+                "confidence": 0.0,
+                "ambiguous": False,
+                "clarification_needed": None
+            }
+            
         # Check cache first
         cache_key = self._get_cache_key(query, context)
         if cache_key in self._cache:
