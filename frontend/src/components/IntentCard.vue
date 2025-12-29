@@ -27,12 +27,12 @@
         </div>
       </div>
       
-      <div class="intent-item" v-if="Object.keys(intent.entities).length">
+      <div class="intent-item" v-if="filteredEntities.length">
         <label>Entities</label>
         <div class="entities">
-          <div v-for="(value, key) in intent.entities" :key="key" class="entity">
-            <span class="entity-key">{{ key }}:</span>
-            <span class="entity-value">{{ formatEntity(value) }}</span>
+          <div v-for="entity in filteredEntities" :key="entity.key" class="entity">
+            <span class="entity-key">{{ entity.key }}:</span>
+            <span class="entity-value">{{ formatEntity(entity.value) }}</span>
           </div>
         </div>
       </div>
@@ -54,6 +54,18 @@ const confidenceClass = computed(() => {
   if (props.intent.confidence >= 0.8) return 'high'
   if (props.intent.confidence >= 0.5) return 'medium'
   return 'low'
+})
+
+const filteredEntities = computed(() => {
+  if (!props.intent.entities) return []
+  return Object.entries(props.intent.entities)
+    .filter(([_, value]) => {
+      if (value === null || value === undefined) return false
+      if (typeof value === 'string' && value.trim() === '') return false
+      if (Array.isArray(value) && value.length === 0) return false
+      return true
+    })
+    .map(([key, value]) => ({ key, value }))
 })
 
 function formatEntity(value) {
