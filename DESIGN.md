@@ -271,21 +271,6 @@ AP-SOUTHEAST-1 (Secondary)
 | Warning | Cache hit < 70% | Investigate |
 | Info | Google quota > 80% | Monitor |
 
-## Cost Optimization
-
-### Estimated Monthly Costs (1M users)
-
-| Component | Configuration | Cost |
-|-----------|---------------|------|
-| Kubernetes | 20 nodes (m5.large) | $3,000 |
-| PostgreSQL | db.r5.xlarge + replicas | $1,500 |
-| Redis | cache.r5.large cluster | $800 |
-| OpenAI API | ~10M embeddings/mo | $1,000 |
-| Google APIs | Within free tier | $0 |
-| **Total** | | **~$6,300/mo** |
-
-### Cost Per User: ~$0.006/month
-
 ## Security Considerations
 
 1. **Multi-tenant Isolation**
@@ -300,8 +285,3 @@ AP-SOUTHEAST-1 (Secondary)
    - All API calls logged
    - 90-day retention
 
-## Disaster Recovery
-
-- **RTO**: 4 hours
-- **RPO**: 1 hour
-- **Strategy**: Multi-region active-passive with automated failover
